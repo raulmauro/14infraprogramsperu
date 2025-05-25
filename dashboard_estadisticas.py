@@ -34,6 +34,21 @@ def theil(array):
     theil_index = np.sum((array / mean) * np.log(array / mean)) / len(array)
     return theil_index
 
+# Función para corregir los valores min/max de ANIN
+def corregir_min_max(df):
+    # Hacer una copia para no modificar el DataFrame original
+    df_corregido = df.copy()
+    
+    # Corregir solo para ANIN
+    mask_anin = df_corregido['programa'] == 'ANIN'
+    
+    # Para las filas de ANIN, intercambiar min y max si es necesario
+    for idx, row in df_corregido[mask_anin].iterrows():
+        if pd.notnull(row['min']) and pd.notnull(row['max']) and row['min'] > row['max']:
+            df_corregido.at[idx, 'min'], df_corregido.at[idx, 'max'] = row['max'], row['min']
+    
+    return df_corregido
+
 # Cargar datos con verificación
 @st.cache_data
 def load_data():
@@ -165,8 +180,8 @@ with tab1:
     st.subheader(f"Comparativa por Régimen Laboral: {selected_program} vs ANIN")
     
     try:
-        # Datos por régimen
-        df_regimen = data['Resumen por Regimen']
+        # Datos por régimen (con corrección aplicada)
+        df_regimen = corregir_min_max(data['Resumen por Regimen'])  # Aplicamos la corrección aquí
         df_regimen_selected = df_regimen[df_regimen['programa'] == selected_program]
         df_regimen_anin = df_regimen[df_regimen['programa'] == 'ANIN']
         df_regimen_combined = pd.concat([df_regimen_selected, df_regimen_anin])
@@ -200,7 +215,7 @@ with tab1:
         # Gráfico comparativo
         if not df_regimen_combined.empty:
             fig_reg = crear_grafico_comparativo(
-                df=data['Resumen por Regimen'],
+                df=df_regimen,  # Usamos el df ya corregido
                 x_col='regimen',
                 y_col='media',
                 title="Distribución de Remuneraciones por Régimen",
@@ -217,8 +232,8 @@ with tab2:
     st.subheader(f"Comparativa por Categoría Laboral: {selected_program} vs ANIN")
     
     try:
-        # Datos por categoría
-        df_categoria = data['Resumen por Categoria']
+        # Datos por categoría (con corrección aplicada)
+        df_categoria = corregir_min_max(data['Resumen por Categoria'])  # Aplicamos la corrección aquí
         df_categoria_selected = df_categoria[df_categoria['programa'] == selected_program]
         df_categoria_anin = df_categoria[df_categoria['programa'] == 'ANIN']
         df_categoria_combined = pd.concat([df_categoria_selected, df_categoria_anin])
@@ -252,7 +267,7 @@ with tab2:
         # Gráfico comparativo
         if not df_categoria_combined.empty:
             fig_cat = crear_grafico_comparativo(
-                df=data['Resumen por Categoria'],
+                df=df_categoria,  # Usamos el df ya corregido
                 x_col='categoria_laboral',
                 y_col='media',
                 title="Distribución de Remuneraciones por Categoría",
@@ -340,4 +355,4 @@ with tab3:
         st.markdown("- 📉 Valores más bajos indican menor desigualdad salarial")
 
 # Nota al pie
-st.caption("© 2025 - Análisis de Remuneraciones de Programas en Extinción desarrollado por Raúl Mauro | Datos abiertos del Estado peruano | Versión 2.3")
+st.caption("© 2025 - Análisis de Remuneraciones de Programas en Extinción desarrollado por Raúl Mauro | Datos abiertos del Estado peruano | Versión 2.4")
