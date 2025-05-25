@@ -8,7 +8,7 @@ from scipy.stats import variation
 # Configuración inicial de la página
 st.set_page_config(layout="wide")
 st.title("📊 Comparativa de Remuneraciones: Programas vs ANIN")
-st.markdown("**Análisis de Remuneraciones de trabajadores de programas que se extinguen - Marzo 2025**")
+st.markdown("**Análisis de transición laboral para trabajadores de programas que se extinguen - Marzo 2025**")
 
 # Color distintivo para ANIN
 COLOR_ANIN = '#E63946'  # Rojo institucional
@@ -149,80 +149,114 @@ def crear_grafico_comparativo(df, x_col, y_col, title, programa_seleccionado):
     
     return fig
 
+# Función para resaltar filas de ANIN
+def highlight_anin(s):
+    return ['background-color: #FFE5E7' if v == 'ANIN' else '' for v in s]
+
 # Crear pestañas
 tab1, tab2, tab3 = st.tabs(["📋 Comparativa por Régimen", "🧾 Comparativa por Categoría", "⚖️ Análisis de Desigualdad"])
 
 with tab1:
     st.subheader(f"Comparativa por Régimen Laboral: {selected_program} vs ANIN")
     
-    # Datos por régimen
-    df_regimen = data['Resumen por Regimen']
-    df_regimen_selected = df_regimen[df_regimen['programa'] == selected_program]
-    df_regimen_anin = df_regimen[df_regimen['programa'] == 'ANIN']
-    df_regimen_combined = pd.concat([df_regimen_selected, df_regimen_anin])
-    
-    # Formatear números
-    for col in ['media', 'mediana', 'min', 'max']:
-        df_regimen_combined[col] = df_regimen_combined[col].apply(lambda x: f"S/ {x:,.1f}" if pd.notnull(x) else "")
-    df_regimen_combined['coef_var'] = df_regimen_combined['coef_var'].apply(lambda x: f"{x*100:.1f}%" if pd.notnull(x) else "")
-    
-    # Resaltar filas de ANIN
-    def highlight_anin(row):
-        color = 'background-color: #FFE5E7' if row['programa'] == 'ANIN' else ''
-        return [color] * len(row)
-    
-    st.dataframe(df_regimen_combined[['programa', 'regimen', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']]
-                 .style.apply(highlight_anin, axis=1)
-                 .format({'n': '{:,.0f}'}), 
-                 height=(len(df_regimen_combined) * 35 + 38),
-                 use_container_width=True)
-    
-    # Gráfico comparativo
-    if not df_regimen_combined.empty:
-        fig_reg = crear_grafico_comparativo(
-            df=data['Resumen por Regimen'],
-            x_col='regimen',
-            y_col='media',
-            title="Distribución de Remuneraciones por Régimen",
-            programa_seleccionado=selected_program
+    try:
+        # Datos por régimen
+        df_regimen = data['Resumen por Regimen']
+        df_regimen_selected = df_regimen[df_regimen['programa'] == selected_program]
+        df_regimen_anin = df_regimen[df_regimen['programa'] == 'ANIN']
+        df_regimen_combined = pd.concat([df_regimen_selected, df_regimen_anin])
+        
+        # Formatear números
+        numeric_cols = ['n', 'media', 'mediana', 'min', 'max', 'coef_var']
+        for col in numeric_cols:
+            if col in df_regimen_combined.columns:
+                if col == 'coef_var':
+                    df_regimen_combined[col] = df_regimen_combined[col].apply(lambda x: f"{x*100:.1f}%" if pd.notnull(x) else "")
+                elif col != 'n':
+                    df_regimen_combined[col] = df_regimen_combined[col].apply(lambda x: f"S/ {x:,.1f}" if pd.notnull(x) else "")
+        
+        # Mostrar dataframe con formato
+        display_cols = ['programa', 'regimen', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']
+        display_cols = [col for col in display_cols if col in df_regimen_combined.columns]
+        
+        styled_df = (
+            df_regimen_combined[display_cols]
+            .style.apply(highlight_anin, subset=['programa'])
+            .format({'n': '{:,.0f}'}, na_rep="")
         )
-        st.plotly_chart(fig_reg, use_container_width=True)
-    else:
-        st.warning("No hay datos disponibles para mostrar la comparativa por régimen")
+        
+        st.dataframe(
+            styled_df,
+            height=(len(df_regimen_combined) * 35 + 38),
+            use_container_width=True
+        )
+        
+        # Gráfico comparativo
+        if not df_regimen_combined.empty:
+            fig_reg = crear_grafico_comparativo(
+                df=data['Resumen por Regimen'],
+                x_col='regimen',
+                y_col='media',
+                title="Distribución de Remuneraciones por Régimen",
+                programa_seleccionado=selected_program
+            )
+            st.plotly_chart(fig_reg, use_container_width=True)
+        else:
+            st.warning("No hay datos disponibles para mostrar la comparativa por régimen")
+            
+    except Exception as e:
+        st.error(f"Error al procesar datos por régimen: {str(e)}")
 
 with tab2:
     st.subheader(f"Comparativa por Categoría Laboral: {selected_program} vs ANIN")
     
-    # Datos por categoría
-    df_categoria = data['Resumen por Categoria']
-    df_categoria_selected = df_categoria[df_categoria['programa'] == selected_program]
-    df_categoria_anin = df_categoria[df_categoria['programa'] == 'ANIN']
-    df_categoria_combined = pd.concat([df_categoria_selected, df_categoria_anin])
-    
-    # Formatear números
-    for col in ['media', 'mediana', 'min', 'max']:
-        df_categoria_combined[col] = df_categoria_combined[col].apply(lambda x: f"S/ {x:,.1f}" if pd.notnull(x) else "")
-    df_categoria_combined['coef_var'] = df_categoria_combined['coef_var'].apply(lambda x: f"{x*100:.1f}%" if pd.notnull(x) else "")
-    
-    # Mostrar tabla comparativa
-    st.dataframe(df_categoria_combined[['programa', 'categoria_laboral', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']]
-                 .style.apply(highlight_anin, axis=1)
-                 .format({'n': '{:,.0f}'}), 
-                 height=(len(df_categoria_combined) * 35 + 38),
-                 use_container_width=True)
-    
-    # Gráfico comparativo
-    if not df_categoria_combined.empty:
-        fig_cat = crear_grafico_comparativo(
-            df=data['Resumen por Categoria'],
-            x_col='categoria_laboral',
-            y_col='media',
-            title="Distribución de Remuneraciones por Categoría",
-            programa_seleccionado=selected_program
+    try:
+        # Datos por categoría
+        df_categoria = data['Resumen por Categoria']
+        df_categoria_selected = df_categoria[df_categoria['programa'] == selected_program]
+        df_categoria_anin = df_categoria[df_categoria['programa'] == 'ANIN']
+        df_categoria_combined = pd.concat([df_categoria_selected, df_categoria_anin])
+        
+        # Formatear números
+        numeric_cols = ['n', 'media', 'mediana', 'min', 'max', 'coef_var']
+        for col in numeric_cols:
+            if col in df_categoria_combined.columns:
+                if col == 'coef_var':
+                    df_categoria_combined[col] = df_categoria_combined[col].apply(lambda x: f"{x*100:.1f}%" if pd.notnull(x) else "")
+                elif col != 'n':
+                    df_categoria_combined[col] = df_categoria_combined[col].apply(lambda x: f"S/ {x:,.1f}" if pd.notnull(x) else "")
+        
+        # Mostrar dataframe con formato
+        display_cols = ['programa', 'categoria_laboral', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']
+        display_cols = [col for col in display_cols if col in df_categoria_combined.columns]
+        
+        styled_df = (
+            df_categoria_combined[display_cols]
+            .style.apply(highlight_anin, subset=['programa'])
+            .format({'n': '{:,.0f}'}, na_rep="")
         )
-        st.plotly_chart(fig_cat, use_container_width=True)
-    else:
-        st.warning("No hay datos disponibles para mostrar la comparativa por categoría")
+        
+        st.dataframe(
+            styled_df,
+            height=(len(df_categoria_combined) * 35 + 38),
+            use_container_width=True
+        )
+        
+        # Gráfico comparativo
+        if not df_categoria_combined.empty:
+            fig_cat = crear_grafico_comparativo(
+                df=data['Resumen por Categoria'],
+                x_col='categoria_laboral',
+                y_col='media',
+                title="Distribución de Remuneraciones por Categoría",
+                programa_seleccionado=selected_program
+            )
+            st.plotly_chart(fig_cat, use_container_width=True)
+        else:
+            st.warning("No hay datos disponibles para mostrar la comparativa por categoría")
+            
+    except Exception as e:
+        st.error(f"Error al procesar datos por categoría: {str(e)}")
 
 with tab3:
     st.subheader(f"Comparativa de Índices de Desigualdad: {selected_program} vs ANIN")
@@ -299,5 +333,4 @@ with tab3:
         st.markdown("- 📉 Valores más bajos indican menor desigualdad salarial")
 
 # Nota al pie
-st.markdown("---")
-st.caption("© 2025 - Análisis de Remuneracion de Programas en Extinción desarrollado por Raúl Mauro | Datos abiertos del Estado peruano | Versión 2.1")
+st.caption("© 2025 - Análisis de Remuneraciones de Programas en Extinción desarrollado por Raúl Mauro | Datos abiertos del Estado peruano | Versión 2.2")
