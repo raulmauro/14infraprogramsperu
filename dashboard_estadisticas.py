@@ -89,9 +89,13 @@ def crear_grafico_comparativo(df, x_col, y_col, title, programa_seleccionado):
         color = COLOR_ANIN if programa == 'ANIN' else (COLOR_OTROS if programa == selected_program else COLOR_TOTAL)
         
         if not group.empty and pd.notnull(group['min'].iloc[0]) and pd.notnull(group['max'].iloc[0]):
+            # Asegurarse que min < max
+            min_val = min(group['min'].iloc[0], group['max'].iloc[0])
+            max_val = max(group['min'].iloc[0], group['max'].iloc[0])
+            
             fig.add_trace(go.Box(
                 x=[i]*3,
-                y=[group['min'].iloc[0], group['media'].iloc[0], group['max'].iloc[0]],
+                y=[min_val, group['media'].iloc[0], max_val],
                 name=f"{regimen} ({programa})",
                 boxpoints='all',
                 jitter=0,
