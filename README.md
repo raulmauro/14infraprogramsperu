@@ -47,7 +47,7 @@ Una vez desplegado en Streamlit Cloud, simplemente:
 ## 📬 Contacto
 
 Desarrollado por **Raul Mauro** con fines de transparencia y análisis público.  
-Puedes encontrarme en: [https://tiktok.com/@raulmauro](https://tiktok.com/@raulmauro)
+Puedes encontrarme en: [https://tiktok.com/@el.politekon](https://tiktok.com/@el.politekon)
 
 ---
 
