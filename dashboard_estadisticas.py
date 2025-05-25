@@ -8,14 +8,14 @@ from scipy.stats import variation
 # Configuración inicial de la página
 st.set_page_config(layout="wide")
 st.title("📊 Comparativa de Remuneraciones: Programas vs ANIN")
-st.markdown("**Análisis comparativo de remuneraciones de trabajadores de programas en extinción - Marzo 2025**")
+st.markdown("**Análisis de Remuneraciones de trabajadores de programas que se extinguen - Marzo 2025**")
 
 # Color distintivo para ANIN
 COLOR_ANIN = '#E63946'  # Rojo institucional
 COLOR_OTROS = '#457B9D'  # Azul para contrastar
 COLOR_TOTAL = '#A8DADC'  # Color neutral para total
 
-# Funciones de desigualdad (se mantienen igual)
+# Funciones de desigualdad
 def gini(array):
     array = np.array(array)
     array = array.flatten()
@@ -34,12 +34,29 @@ def theil(array):
     theil_index = np.sum((array / mean) * np.log(array / mean)) / len(array)
     return theil_index
 
-# Cargar datos
+# Cargar datos con verificación
 @st.cache_data
 def load_data():
-    return pd.read_excel("estadisticas_programas_con_total.xlsx", sheet_name=None)
+    try:
+        data = pd.read_excel("estadisticas_programas_con_total.xlsx", sheet_name=None)
+        
+        # Verificar hojas requeridas
+        hojas_requeridas = ['Resumen por Regimen', 'Resumen por Categoria', 'Indice Gini', 
+                           'Theil por Sexo', 'Theil por Categoria']
+        for hoja in hojas_requeridas:
+            if hoja not in data:
+                st.error(f"Error: Falta la hoja requerida '{hoja}' en el archivo Excel")
+                return None
+                
+        return data
+    except Exception as e:
+        st.error(f"Error al cargar el archivo Excel: {str(e)}")
+        return None
 
 data = load_data()
+
+if data is None:
+    st.stop()
 
 # Obtener lista de programas (excluyendo TOTAL y ANIN)
 programas = [p for p in data['Resumen por Regimen']['programa'].unique() if p not in ['TOTAL', 'ANIN']]
@@ -47,8 +64,10 @@ programas.insert(0, 'ANIN')  # ANIN siempre como primera opción
 
 selected_program = st.selectbox("Selecciona un programa para comparar con ANIN", programas, index=0)
 
-# Crear pestañas
-tab1, tab2, tab3 = st.tabs(["📋 Comparativa por Régimen", "🧾 Comparativa por Categoría", "⚖️ Análisis de Desigualdad"])
+# Función para convertir color HEX a RGB
+def hex_to_rgb(hex_color):
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
 # Función para crear gráfico comparativo
 def crear_grafico_comparativo(df, x_col, y_col, title, programa_seleccionado):
@@ -130,10 +149,8 @@ def crear_grafico_comparativo(df, x_col, y_col, title, programa_seleccionado):
     
     return fig
 
-# Función auxiliar para convertir color HEX a RGB
-def hex_to_rgb(hex_color):
-    hex_color = hex_color.lstrip('#')
-    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+# Crear pestañas
+tab1, tab2, tab3 = st.tabs(["📋 Comparativa por Régimen", "🧾 Comparativa por Categoría", "⚖️ Análisis de Desigualdad"])
 
 with tab1:
     st.subheader(f"Comparativa por Régimen Laboral: {selected_program} vs ANIN")
@@ -170,6 +187,8 @@ with tab1:
             programa_seleccionado=selected_program
         )
         st.plotly_chart(fig_reg, use_container_width=True)
+    else:
+        st.warning("No hay datos disponibles para mostrar la comparativa por régimen")
 
 with tab2:
     st.subheader(f"Comparativa por Categoría Laboral: {selected_program} vs ANIN")
@@ -202,6 +221,8 @@ with tab2:
             programa_seleccionado=selected_program
         )
         st.plotly_chart(fig_cat, use_container_width=True)
+    else:
+        st.warning("No hay datos disponibles para mostrar la comparativa por categoría")
 
 with tab3:
     st.subheader(f"Comparativa de Índices de Desigualdad: {selected_program} vs ANIN")
@@ -209,48 +230,67 @@ with tab3:
     col1, col2 = st.columns(2)
     
     with col1:
-        # Comparativa de Gini
+        # Comparativa de Gini - Versión robusta
         st.markdown("### 📈 Índice de Gini Comparativo")
-        gini_selected = data['Indice Gini'][data['Indice Gini']['programa'] == selected_program]['indice_gini'].values[0]
-        gini_anin = data['Indice Gini'][data['Indice Gini']['programa'] == 'ANIN']['indice_gini'].values[0]
         
-        delta_gini = (gini_anin - gini_selected) * 100
-        st.metric(
-            label=f"ANIN: {gini_anin*100:.1f}%",
-            value=f"{selected_program}: {gini_selected*100:.1f}%",
-            delta=f"{delta_gini:.1f}%",
-            delta_color="inverse",
-            help="0% = perfecta igualdad, 100% = máxima desigualdad"
-        )
+        try:
+            gini_df = data['Indice Gini']
+            gini_selected = gini_df.loc[gini_df['programa'] == selected_program, 'indice_gini'].iloc[0]
+            gini_anin = gini_df.loc[gini_df['programa'] == 'ANIN', 'indice_gini'].iloc[0]
+            
+            delta_gini = (gini_anin - gini_selected) * 100
+            st.metric(
+                label=f"ANIN: {gini_anin*100:.1f}%",
+                value=f"{selected_program}: {gini_selected*100:.1f}%",
+                delta=f"{delta_gini:.1f}%",
+                delta_color="inverse",
+                help="0% = perfecta igualdad, 100% = máxima desigualdad"
+            )
+        except IndexError:
+            st.error("No se encontraron datos completos para la comparativa de Gini")
+        except Exception as e:
+            st.error(f"Error al procesar datos de Gini: {str(e)}")
         
-        # Comparativa de Theil por Sexo
+        # Comparativa de Theil por Sexo - Versión robusta
         st.markdown("### 👥 Theil por Sexo Comparativo")
-        theil_sexo_selected = data['Theil por Sexo'][data['Theil por Sexo']['programa'] == selected_program]
-        theil_sexo_anin = data['Theil por Sexo'][data['Theil por Sexo']['programa'] == 'ANIN']
-        
-        st.markdown("**Total**")
-        col1a, col1b = st.columns(2)
-        with col1a:
-            st.metric("ANIN", f"{theil_sexo_anin['theil_total_sexo'].values[0]:.3f}")
-        with col1b:
-            delta = theil_sexo_anin['theil_total_sexo'].values[0] - theil_sexo_selected['theil_total_sexo'].values[0]
-            st.metric(selected_program, f"{theil_sexo_selected['theil_total_sexo'].values[0]:.3f}",
-                     delta=f"{delta:.3f}", delta_color="inverse")
+        try:
+            theil_sexo_df = data['Theil por Sexo']
+            theil_sexo_selected = theil_sexo_df[theil_sexo_df['programa'] == selected_program].iloc[0]
+            theil_sexo_anin = theil_sexo_df[theil_sexo_df['programa'] == 'ANIN'].iloc[0]
+            
+            st.markdown("**Total**")
+            col1a, col1b = st.columns(2)
+            with col1a:
+                st.metric("ANIN", f"{theil_sexo_anin['theil_total_sexo']:.3f}")
+            with col1b:
+                delta = theil_sexo_anin['theil_total_sexo'] - theil_sexo_selected['theil_total_sexo']
+                st.metric(selected_program, f"{theil_sexo_selected['theil_total_sexo']:.3f}",
+                         delta=f"{delta:.3f}", delta_color="inverse")
+        except IndexError:
+            st.error("No se encontraron datos completos de Theil por Sexo")
+        except Exception as e:
+            st.error(f"Error al procesar datos de Theil por Sexo: {str(e)}")
     
     with col2:
-        # Comparativa de Theil por Categoría
+        # Comparativa de Theil por Categoría - Versión robusta
         st.markdown("### 🏷️ Theil por Categoría Comparativo")
-        theil_cat_selected = data['Theil por Categoria'][data['Theil por Categoria']['programa'] == selected_program]
-        theil_cat_anin = data['Theil por Categoria'][data['Theil por Categoria']['programa'] == 'ANIN']
-        
-        st.markdown("**Total**")
-        col2a, col2b = st.columns(2)
-        with col2a:
-            st.metric("ANIN", f"{theil_cat_anin['theil_total_categoria'].values[0]:.3f}")
-        with col2b:
-            delta = theil_cat_anin['theil_total_categoria'].values[0] - theil_cat_selected['theil_total_categoria'].values[0]
-            st.metric(selected_program, f"{theil_cat_selected['theil_total_categoria'].values[0]:.3f}",
-                     delta=f"{delta:.3f}", delta_color="inverse")
+        try:
+            theil_cat_df = data['Theil por Categoria']
+            theil_cat_selected = theil_cat_df[theil_cat_df['programa'] == selected_program].iloc[0]
+            theil_cat_anin = theil_cat_df[theil_cat_df['programa'] == 'ANIN'].iloc[0]
+            
+            st.markdown("**Total**")
+            col2a, col2b = st.columns(2)
+            with col2a:
+                st.metric("ANIN", f"{theil_cat_anin['theil_total_categoria']:.3f}")
+            with col2b:
+                delta = theil_cat_anin['theil_total_categoria'] - theil_cat_selected['theil_total_categoria']
+                st.metric(selected_program, f"{theil_cat_selected['theil_total_categoria']:.3f}",
+                         delta=f"{delta:.3f}", delta_color="inverse")
+        except IndexError:
+            st.error("No se encontraron datos completos de Theil por Categoría")
+        except Exception as e:
+            st.error(f"Error al procesar datos de Theil por Categoría: {str(e)}")
         
         st.markdown("---")
         st.markdown("**Interpretación:**")
@@ -260,4 +300,4 @@ with tab3:
 
 # Nota al pie
 st.markdown("---")
-st.caption("© 2025 - Análisis de Remuneraciones de Programas y ANIN desarrollado por Raúl Mauro | Datos abiertos del Estado peruano | Versión 2.0")
+st.caption("© 2025 - Análisis de Remuneracion de Programas en Extinción desarrollado por Raúl Mauro | Datos abiertos del Estado peruano | Versión 2.1")
