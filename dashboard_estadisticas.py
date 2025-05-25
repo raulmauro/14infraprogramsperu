@@ -73,7 +73,6 @@ if uploaded_file is not None:
     st.dataframe(stats_categoria)
 
     st.subheader("📉 Indicadores de Desigualdad Global")
-
     gini_val = gini(df_prog["Remuneracion"])
     theil_val = theil(df_prog["Remuneracion"])
 
@@ -81,4 +80,27 @@ if uploaded_file is not None:
     col1.metric("Índice de Gini", round(gini_val, 4))
     col2.metric("Índice de Theil", round(theil_val, 4))
 
-    st.subheader("📊 D
+    st.subheader("📊 Desigualdad: Theil entre/intra por Sexo")
+    theil_total = theil(df_prog["Remuneracion"])
+    grupos_sexo = df_prog.groupby("Sexo")
+    theil_intra = grupos_sexo.apply(lambda g: len(g)/len(df_prog) * theil(g["Remuneracion"])).sum()
+    theil_between = theil_total - theil_intra
+
+    st.write(f"**Theil Total:** {theil_total:.4f}")
+    st.write(f"**Intra grupos (sexo):** {theil_intra:.4f}")
+    st.write(f"**Entre grupos (sexo):** {theil_between:.4f}")
+
+    st.subheader("📊 Desigualdad: Theil entre/intra por Categoría Laboral")
+    grupos_categoria = df_prog.groupby("CATEGORIA_LABORAL")
+    theil_intra_cat = grupos_categoria.apply(lambda g: len(g)/len(df_prog) * theil(g["Remuneracion"])).sum()
+    theil_between_cat = theil_total - theil_intra_cat
+
+    st.write(f"**Intra grupos (categoría):** {theil_intra_cat:.4f}")
+    st.write(f"**Entre grupos (categoría):** {theil_between_cat:.4f}")
+
+    st.subheader("📉 Histograma de Remuneraciones")
+    fig = px.histogram(df_prog, x="Remuneracion", nbins=30, title="Distribución de Remuneraciones")
+    st.plotly_chart(fig, use_container_width=True)
+
+else:
+    st.info("Por favor, sube un archivo Excel con la base de datos procesada.")
