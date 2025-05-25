@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import plotly.graph_objects as go
 from scipy.stats import variation
 
 # Configuración inicial de la página
@@ -9,7 +10,7 @@ st.set_page_config(layout="wide")
 st.title("📊 Análisis de Remuneraciones en Programas Estatales del Perú")
 st.markdown("**Datos procesados a partir del portal de transparencia del Estado**")
 
-# Funciones de desigualdad
+# Funciones de desigualdad (se mantienen igual)
 def gini(array):
     array = np.array(array)
     array = array.flatten()
@@ -28,100 +29,153 @@ def theil(array):
     theil_index = np.sum((array / mean) * np.log(array / mean)) / len(array)
     return theil_index
 
-# Cargar datos
+# Cargar datos (se mantiene igual)
 @st.cache_data
 def load_data():
     return pd.read_excel("estadisticas_programas_con_total.xlsx", sheet_name=None)
 
 data = load_data()
 
-# Obtener lista de programas disponibles (excluyendo 'TOTAL' si es necesario)
+# Obtener lista de programas (se mantiene igual)
 programas = [p for p in data['Resumen por Regimen']['programa'].unique() if p != 'TOTAL']
-
-# Selector de programa
 selected_program = st.selectbox("Selecciona un programa estatal", programas, index=0)
 
-# Crear pestañas
+# Crear pestañas (se mantiene igual)
 tab1, tab2, tab3 = st.tabs(["📋 Por Régimen", "🧾 Por Categoría", "⚖️ Desigualdad"])
+
+# Función para crear gráfico mejorado
+def crear_grafico_mejorado(df, x_col, y_col, title):
+    fig = go.Figure()
+    
+    for regimen in df[x_col].unique():
+        subset = df[df[x_col] == regimen]
+        
+        # Solo agregar datos si hay valores válidos
+        if not subset.empty and pd.notnull(subset['min'].iloc[0]) and pd.notnull(subset['max'].iloc[0]):
+            fig.add_trace(go.Box(
+                x=[regimen]*3,
+                y=[subset['min'].iloc[0], subset['media'].iloc[0], subset['max'].iloc[0]],
+                name=regimen,
+                boxpoints='all',
+                jitter=0.3,
+                pointpos=0,
+                marker=dict(
+                    color='rgb(7,40,89)',
+                    size=8,
+                    line=dict(
+                        color='rgb(8,48,107)',
+                        width=1.5
+                    )
+                ),
+                line=dict(color='rgb(8,48,107)'),
+                whiskerwidth=0.2,
+                fillcolor='rgba(255,255,255,0)',
+                hoveron='points',
+                hoverinfo='y'
+            ))
+    
+    # Personalizar diseño
+    fig.update_layout(
+        title=title,
+        xaxis_title=x_col,
+        yaxis_title="Remuneración (S/)",
+        showlegend=False,
+        height=600,
+        margin=dict(l=50, r=50, b=100, t=100, pad=4),
+        boxmode='group'
+    )
+    
+    # Añadir anotaciones para los valores
+    for regimen in df[x_col].unique():
+        subset = df[df[x_col] == regimen]
+        if not subset.empty:
+            # Media
+            fig.add_annotation(
+                x=regimen,
+                y=subset['media'].iloc[0],
+                text=f"Media: S/ {subset['media'].iloc[0]:,.1f}",
+                showarrow=True,
+                arrowhead=1,
+                ax=0,
+                ay=-40
+            )
+            # Mínimo
+            fig.add_annotation(
+                x=regimen,
+                y=subset['min'].iloc[0],
+                text=f"Mín: S/ {subset['min'].iloc[0]:,.1f}",
+                showarrow=True,
+                arrowhead=1,
+                ax=0,
+                ay=40
+            )
+            # Máximo
+            fig.add_annotation(
+                x=regimen,
+                y=subset['max'].iloc[0],
+                text=f"Máx: S/ {subset['max'].iloc[0]:,.1f}",
+                showarrow=True,
+                arrowhead=1,
+                ax=0,
+                ay=-40
+            )
+    
+    return fig
 
 with tab1:
     st.subheader(f"Análisis por Régimen Laboral - {selected_program}")
     
-    # Datos por régimen
+    # Datos por régimen (se mantiene igual)
     df_regimen = data['Resumen por Regimen'][data['Resumen por Regimen']['programa'] == selected_program]
     df_regimen = df_regimen[['regimen', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']]
     
-    # Formatear números
+    # Formatear números (se mantiene igual)
     for col in ['media', 'mediana', 'min', 'max']:
         df_regimen[col] = df_regimen[col].apply(lambda x: f"S/ {x:,.1f}" if pd.notnull(x) else "")
-    
-    # Formatear coeficiente de variación como porcentaje
     df_regimen['coef_var'] = df_regimen['coef_var'].apply(lambda x: f"{x*100:.1f}%" if pd.notnull(x) else "")
     
     st.dataframe(df_regimen.style.format({'n': '{:,.0f}'}), 
                 height=(len(df_regimen) * 35 + 38),
                 use_container_width=True)
     
-    # Gráfico de distribución por régimen con min, media y max
+    # Nuevo gráfico mejorado
     if not df_regimen.empty:
-        fig_reg = px.bar(df_regimen, x='regimen', y='media', 
-                         title=f"Distribución de Remuneraciones por Régimen - {selected_program}",
-                         labels={'media': 'Remuneración (S/)', 'regimen': 'Régimen Laboral'},
-                         text='media')
-        
-        # Añadir líneas para mínimo y máximo
-        fig_reg.add_scatter(x=df_regimen['regimen'], y=df_regimen['min'], 
-                           mode='markers+text', name='Mínimo',
-                           marker=dict(color='red', size=10),
-                           text=df_regimen['min'], textposition='top center')
-        
-        fig_reg.add_scatter(x=df_regimen['regimen'], y=df_regimen['max'], 
-                           mode='markers+text', name='Máximo',
-                           marker=dict(color='green', size=10),
-                           text=df_regimen['max'], textposition='top center')
-        
-        fig_reg.update_layout(showlegend=True)
+        fig_reg = crear_grafico_mejorado(
+            df=data['Resumen por Regimen'][data['Resumen por Regimen']['programa'] == selected_program],
+            x_col='regimen',
+            y_col='media',
+            title=f"Distribución de Remuneraciones por Régimen - {selected_program}"
+        )
         st.plotly_chart(fig_reg, use_container_width=True)
 
 with tab2:
     st.subheader(f"Análisis por Categoría Laboral - {selected_program}")
     
-    # Datos por categoría
+    # Datos por categoría (se mantiene igual)
     df_categoria = data['Resumen por Categoria'][data['Resumen por Categoria']['programa'] == selected_program]
     df_categoria = df_categoria[['categoria_laboral', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']]
     
-    # Formatear números
+    # Formatear números (se mantiene igual)
     for col in ['media', 'mediana', 'min', 'max']:
         df_categoria[col] = df_categoria[col].apply(lambda x: f"S/ {x:,.1f}" if pd.notnull(x) else "")
-    
-    # Formatear coeficiente de variación como porcentaje
     df_categoria['coef_var'] = df_categoria['coef_var'].apply(lambda x: f"{x*100:.1f}%" if pd.notnull(x) else "")
     
     st.dataframe(df_categoria.style.format({'n': '{:,.0f}'}), 
                 height=(len(df_categoria) * 35 + 38),
                 use_container_width=True)
     
-    # Gráfico de distribución por categoría con min, media y max
+    # Nuevo gráfico mejorado
     if not df_categoria.empty:
-        fig_cat = px.bar(df_categoria, x='categoria_laboral', y='media',
-                         title=f"Distribución de Remuneraciones por Categoría - {selected_program}",
-                         labels={'media': 'Remuneración (S/)', 'categoria_laboral': 'Categoría Laboral'},
-                         text='media')
-        
-        fig_cat.add_scatter(x=df_categoria['categoria_laboral'], y=df_categoria['min'], 
-                           mode='markers+text', name='Mínimo',
-                           marker=dict(color='red', size=10),
-                           text=df_categoria['min'], textposition='top center')
-        
-        fig_cat.add_scatter(x=df_categoria['categoria_laboral'], y=df_categoria['max'], 
-                           mode='markers+text', name='Máximo',
-                           marker=dict(color='green', size=10),
-                           text=df_categoria['max'], textposition='top center')
-        
-        fig_cat.update_layout(showlegend=True)
+        fig_cat = crear_grafico_mejorado(
+            df=data['Resumen por Categoria'][data['Resumen por Categoria']['programa'] == selected_program],
+            x_col='categoria_laboral',
+            y_col='media',
+            title=f"Distribución de Remuneraciones por Categoría - {selected_program}"
+        )
         st.plotly_chart(fig_cat, use_container_width=True)
 
 with tab3:
+    # (Se mantiene igual que en la versión anterior)
     st.subheader(f"Índices de Desigualdad - {selected_program}")
     
     col1, col2 = st.columns(2)
@@ -145,12 +199,11 @@ with tab3:
         st.markdown(f"- **Entre categorías:** {theil_cat['theil_between_categoria'].values[0]:.3f}")
         st.markdown(f"- **Intra categorías:** {theil_cat['theil_within_categoria'].values[0]:.3f}")
         
-        # Explicación de los índices
         st.markdown("---")
         st.markdown("**Nota:** Los índices de Theil miden la desigualdad, donde:")
         st.markdown("- **Entre grupos:** Desigualdad entre diferentes categorías/sexos")
         st.markdown("- **Intra grupos:** Desigualdad dentro de la misma categoría/sexo")
 
-# Nota al pie
+# Nota al pie (se mantiene igual)
 st.markdown("---")
-st.caption("© 2023 - Desarrollado por Raúl Mauro con datos de Transparencia del Estado peruano | Versión 1.1")
+st.caption("© 2023 - Desarrollado por Raúl Mauro con datos de Transparencia del Estado peruano | Versión 1.2")
