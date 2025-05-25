@@ -8,7 +8,7 @@ from scipy.stats import variation
 # Configuración inicial de la página
 st.set_page_config(layout="wide")
 st.title("📊 Análisis de Remuneraciones en Programas Estatales del Perú")
-st.markdown("**Datos procesados a partir del portal de transparencia del Estado**")
+st.markdown("**Datos procesados a partir del portal de Transparencia del Estado - Marzo 2025**")
 
 # Funciones de desigualdad (se mantienen igual)
 def gini(array):
@@ -206,4 +206,4 @@ with tab3:
 
 # Nota al pie (se mantiene igual)
 st.markdown("---")
-st.caption("© 2023 - Desarrollado por Raúl Mauro con datos de Transparencia del Estado peruano | Versión 1.2")
+st.caption("© 2025 - Desarrollado por Raúl Mauro con datos abiertos del Estado peruano | Versión 1.2")
