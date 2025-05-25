@@ -2,62 +2,83 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from io import BytesIO
 from scipy.stats import variation
-from inequality import gini, theil
 
-# Cargar el archivo
-@st.cache_data
-def load_data():
-    return pd.read_excel("estadisticas_programas_con_total.xlsx", sheet_name=None)
+# -----------------------------
+# Funciones de desigualdad
+# -----------------------------
 
-# Cargar hojas
-data = load_data()
-programas = list(data.keys())
+def gini(array):
+    """Índice de Gini"""
+    array = np.array(array)
+    array = array.flatten()
+    if np.amin(array) < 0:
+        array -= np.amin(array)
+    array += 0.0000001
+    array = np.sort(array)
+    index = np.arange(1, array.shape[0] + 1)
+    n = array.shape[0]
+    return (np.sum((2 * index - n - 1) * array)) / (n * np.sum(array))
 
-st.title("Análisis de Remuneraciones en Programas Estatales del Perú")
-st.markdown("Datos procesados a partir del portal de transparencia del Estado. Incluye análisis por régimen laboral, categoría y medidas de desigualdad.")
+def theil(array):
+    """Índice de Theil (T)"""
+    array = np.array(array)
+    array = array[array > 0]
+    mean = np.mean(array)
+    theil_index = np.sum((array / mean) * np.log(array / mean)) / len(array)
+    return theil_index
 
-# Selector de programa
-selected_program = st.selectbox("Selecciona un programa estatal", programas)
+# -----------------------------
+# Cargar datos
+# -----------------------------
+st.set_page_config(layout="wide", page_title="Dashboard Estadísticas 14 Programas")
+st.title("📊 Dashboard de Estadísticas de los 14 Programas Estatales")
 
-df = data[selected_program]
+uploaded_file = st.file_uploader("🔼 Cargar archivo Excel procesado", type=["xlsx"])
+if uploaded_file is not None:
+    df = pd.read_excel(uploaded_file)
 
-st.subheader(f"Resumen para: {selected_program}")
+    st.success("Archivo cargado correctamente.")
+    st.write("Vista previa de los datos:")
+    st.dataframe(df.head())
 
-# Sección: Estadísticas por régimen
-st.markdown("### 📋 Estadísticas por Régimen Laboral")
-st.dataframe(df[['Regimen', 'n', 'promedio', 'mediana', 'min', 'max', 'coef_variacion']])
+    programas = ["TODOS"] + sorted(df["PROGRAMA"].dropna().unique().tolist())
+    programa_seleccionado = st.selectbox("Selecciona un programa", programas)
 
-# Sección: Estadísticas por categoría laboral
-st.markdown("### 🧾 Estadísticas por Categoría Laboral")
-st.dataframe(df[['Categoria_laboral', 'n_cat', 'promedio_cat', 'mediana_cat', 'min_cat', 'max_cat', 'coef_var_cat']])
+    if programa_seleccionado != "TODOS":
+        df_prog = df[df["PROGRAMA"] == programa_seleccionado]
+    else:
+        df_prog = df.copy()
 
-# Sección: Distribución de salarios
-st.markdown("### 📊 Distribución de Remuneraciones")
-fig = px.histogram(df, x="Remuneracion", nbins=50, title="Distribución de salarios mensuales")
-st.plotly_chart(fig)
+    st.subheader("📈 Estadísticas por Régimen Laboral")
+    stats_regimen = df_prog.groupby("Regimen")["Remuneracion"].agg([
+        ("Cantidad", "count"),
+        ("Promedio", "mean"),
+        ("Mediana", "median"),
+        ("Máximo", "max"),
+        ("Mínimo", "min"),
+        ("Coeficiente de variación", variation)
+    ]).round(2)
+    st.dataframe(stats_regimen)
 
-# Sección: Índices de desigualdad
-st.markdown("### ⚖️ Índices de Desigualdad")
+    st.subheader("📊 Estadísticas por Categoría Laboral")
+    stats_categoria = df_prog.groupby("CATEGORIA_LABORAL")["Remuneracion"].agg([
+        ("Cantidad", "count"),
+        ("Promedio", "mean"),
+        ("Mediana", "median"),
+        ("Máximo", "max"),
+        ("Mínimo", "min"),
+        ("Coeficiente de variación", variation)
+    ]).round(2)
+    st.dataframe(stats_categoria)
 
-if 'Gini' in df.columns:
-    gini_val = df['Gini'].dropna().values[0]
-    st.metric("Índice de Gini", f"{gini_val:.3f}")
+    st.subheader("📉 Indicadores de Desigualdad Global")
 
-if 'Theil_total' in df.columns:
-    theil_total = df['Theil_total'].dropna().values[0]
-    theil_btw_sex = df['Theil_entre_sexos'].dropna().values[0]
-    theil_intra_sex = df['Theil_intra_sexos'].dropna().values[0]
-    st.markdown(f"**Theil Total:** {theil_total:.3f}  \n"
-                f"**Entre sexos:** {theil_btw_sex:.3f}  \n"
-                f"**Intra sexos:** {theil_intra_sex:.3f}")
+    gini_val = gini(df_prog["Remuneracion"])
+    theil_val = theil(df_prog["Remuneracion"])
 
-if 'Theil_entre_categoria' in df.columns:
-    theil_btw_cat = df['Theil_entre_categoria'].dropna().values[0]
-    theil_intra_cat = df['Theil_intra_categoria'].dropna().values[0]
-    st.markdown(f"**Entre categorías:** {theil_btw_cat:.3f}  \n"
-                f"**Intra categorías:** {theil_intra_cat:.3f}")
+    col1, col2 = st.columns(2)
+    col1.metric("Índice de Gini", round(gini_val, 4))
+    col2.metric("Índice de Theil", round(theil_val, 4))
 
-st.markdown("---")
-st.caption("Desarrollado por Raul con apoyo de análisis automatizado y datos abiertos del Estado peruano.")
+    st.subheader("📊 D
