@@ -8,7 +8,7 @@ from scipy.stats import variation
 # Configuración inicial de la página
 st.set_page_config(layout="wide")
 st.title("📊 Comparativa de Remuneraciones: Programas vs ANIN")
-st.markdown("**Análisis de transición laboral para trabajadores de programas que se extinguen - Marzo 2025**")
+st.markdown("**Análisis de Remuneraciones de trabajadores de programas que se extinguen - Marzo 2025**")
 
 # Color distintivo para ANIN
 COLOR_ANIN = '#E63946'  # Rojo institucional
