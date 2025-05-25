@@ -48,11 +48,11 @@ st.subheader(f"Resumen para: {selected_program}")
 
 # Sección: Estadísticas por régimen
 st.markdown("### 📋 Estadísticas por Régimen Laboral")
-st.dataframe(df[['Regimen', 'n', 'promedio', 'mediana', 'min', 'max', 'coef_variacion']])
+st.dataframe(df[['regimen', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']])
 
 # Sección: Estadísticas por categoría laboral
 st.markdown("### 🧾 Estadísticas por Categoría Laboral")
-st.dataframe(df[['Categoria_laboral', 'n_cat', 'promedio_cat', 'mediana_cat', 'min_cat', 'max_cat', 'coef_var_cat']])
+st.dataframe(df[['categoria_laboral', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']])
 
 # Sección: Distribución de salarios
 st.markdown("### 📊 Distribución de Remuneraciones")
