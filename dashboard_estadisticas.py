@@ -149,9 +149,10 @@ def crear_grafico_comparativo(df, x_col, y_col, title, programa_seleccionado):
     
     return fig
 
-# Función para resaltar filas de ANIN
-def highlight_anin(s):
-    return ['background-color: #FFE5E7' if v == 'ANIN' else '' for v in s]
+# Función para resaltar filas de ANIN (versión corregida)
+def highlight_anin(row):
+    is_anin = row['programa'] == 'ANIN'
+    return ['background-color: #FFE5E7' if is_anin else '' for _ in row]
 
 # Crear pestañas
 tab1, tab2, tab3 = st.tabs(["📋 Comparativa por Régimen", "🧾 Comparativa por Categoría", "⚖️ Análisis de Desigualdad"])
@@ -166,6 +167,9 @@ with tab1:
         df_regimen_anin = df_regimen[df_regimen['programa'] == 'ANIN']
         df_regimen_combined = pd.concat([df_regimen_selected, df_regimen_anin])
         
+        # Resetear índice para evitar problemas con Styler
+        df_regimen_combined = df_regimen_combined.reset_index(drop=True)
+        
         # Formatear números
         numeric_cols = ['n', 'media', 'mediana', 'min', 'max', 'coef_var']
         for col in numeric_cols:
@@ -179,11 +183,9 @@ with tab1:
         display_cols = ['programa', 'regimen', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']
         display_cols = [col for col in display_cols if col in df_regimen_combined.columns]
         
-        styled_df = (
-            df_regimen_combined[display_cols]
-            .style.apply(highlight_anin, subset=['programa'])
-            .format({'n': '{:,.0f}'}, na_rep="")
-        )
+        # Aplicar estilo con índice único
+        styled_df = df_regimen_combined[display_cols].style.apply(highlight_anin, axis=1)
+        styled_df = styled_df.format({'n': '{:,.0f}'}, na_rep="")
         
         st.dataframe(
             styled_df,
@@ -217,6 +219,9 @@ with tab2:
         df_categoria_anin = df_categoria[df_categoria['programa'] == 'ANIN']
         df_categoria_combined = pd.concat([df_categoria_selected, df_categoria_anin])
         
+        # Resetear índice para evitar problemas con Styler
+        df_categoria_combined = df_categoria_combined.reset_index(drop=True)
+        
         # Formatear números
         numeric_cols = ['n', 'media', 'mediana', 'min', 'max', 'coef_var']
         for col in numeric_cols:
@@ -230,11 +235,9 @@ with tab2:
         display_cols = ['programa', 'categoria_laboral', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']
         display_cols = [col for col in display_cols if col in df_categoria_combined.columns]
         
-        styled_df = (
-            df_categoria_combined[display_cols]
-            .style.apply(highlight_anin, subset=['programa'])
-            .format({'n': '{:,.0f}'}, na_rep="")
-        )
+        # Aplicar estilo con índice único
+        styled_df = df_categoria_combined[display_cols].style.apply(highlight_anin, axis=1)
+        styled_df = styled_df.format({'n': '{:,.0f}'}, na_rep="")
         
         st.dataframe(
             styled_df,
@@ -333,4 +336,4 @@ with tab3:
         st.markdown("- 📉 Valores más bajos indican menor desigualdad salarial")
 
 # Nota al pie
-st.caption("© 2025 - Análisis de Remuneraciones de Programas en Extinción desarrollado por Raúl Mauro | Datos abiertos del Estado peruano | Versión 2.2")
+st.caption("© 2025 - Análisis de Remuneraciones de Programas en Extinción desarrollado por Raúl Mauro | Datos abiertos del Estado peruano | Versión 2.3")
