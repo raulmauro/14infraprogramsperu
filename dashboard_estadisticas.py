@@ -5,6 +5,34 @@ import plotly.express as px
 import plotly.graph_objects as go
 from scipy.stats import variation
 
+def apply_anin_style(df):
+    """
+    Aplica estilo personalizado a la tabla: 
+    - Fondo rojo oscuro (#8B0000) y texto blanco para filas ANIN
+    - Sin estilo para otras filas
+    """
+    # Crear lista de estilos para cada fila
+    styles = []
+    for idx, row in df.iterrows():
+        if row['programa'] == 'ANIN':
+            style = {
+                'props': [
+                    ('background-color', '#8B0000'),
+                    ('color', 'white'),
+                    ('font-weight', 'bold'),
+                    ('border', '1px solid #5C0000')
+                ]
+            }
+        else:
+            style = {'props': []}
+        styles.append(style)
+    
+    # Aplicar estilos a cada fila usando set_table_styles
+    return df.style.set_table_styles(
+        [{'selector': f'tr:nth-child({idx+1}) td', 'props': style['props']} 
+         for idx, style in enumerate(styles)]
+    ).format({'n': '{:,.0f}'}, na_rep="")
+
 # Configuración inicial de la página
 st.set_page_config(layout="wide")
 st.title("📊 Comparativa de Remuneraciones: Programas vs ANIN")
@@ -167,16 +195,7 @@ def crear_grafico_comparativo(df, x_col, y_col, title, programa_seleccionado):
             )
     
     return fig
-
-# Función mejorada para resaltar filas de ANIN con fondo oscuro y texto blanco
-def highlight_anin_styler(df):
-    def _highlight_anin(row):
-        if row['programa'] == 'ANIN':
-            return ['background-color: #8B0000; color: white; font-weight: bold' for _ in row]
-        else:
-            return ['' for _ in row]
     
-    return df.style.apply(_highlight_anin, axis=1)
 
 # Crear pestañas
 tab1, tab2, tab3 = st.tabs(["📋 Comparativa por Régimen", "🧾 Comparativa por Categoría", "⚖️ Análisis de Desigualdad"])
@@ -207,10 +226,8 @@ with tab1:
         display_cols = ['programa', 'regimen', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']
         display_cols = [col for col in display_cols if col in df_regimen_combined.columns]
         
-        # Aplicar estilo mejorado
-        styled_df = highlight_anin_styler(df_regimen_combined[display_cols])
-        styled_df = styled_df.format({'n': '{:,.0f}'}, na_rep="")
-        
+        # Aplicar estilo mejorado con set_table_styles
+        styled_df = apply_anin_style(df_regimen_combined[display_cols])
         st.dataframe(
             styled_df,
             height=(len(df_regimen_combined) * 35 + 38),
@@ -259,10 +276,8 @@ with tab2:
         display_cols = ['programa', 'categoria_laboral', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']
         display_cols = [col for col in display_cols if col in df_categoria_combined.columns]
         
-        # Aplicar estilo mejorado
-        styled_df = highlight_anin_styler(df_categoria_combined[display_cols])
-        styled_df = styled_df.format({'n': '{:,.0f}'}, na_rep="")
-        
+        # Aplicar estilo mejorado con set_table_styles
+        styled_df = apply_anin_style(df_categoria_combined[display_cols])
         st.dataframe(
             styled_df,
             height=(len(df_categoria_combined) * 35 + 38),
@@ -361,6 +376,7 @@ with tab3:
 
 # Nota al pie
 st.caption("© 2025 - Análisis de Remuneraciones de Programas en Extinción desarrollado por Raúl Mauro | Datos abiertos del Estado peruano | Versión 2.4")
+
 
 
 
