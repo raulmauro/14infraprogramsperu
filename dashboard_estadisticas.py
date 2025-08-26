@@ -5,33 +5,46 @@ import plotly.express as px
 import plotly.graph_objects as go
 from scipy.stats import variation
 
-def apply_anin_style(df):
+def create_custom_table(df, display_cols):
     """
-    Aplica estilo personalizado a la tabla: 
-    - Fondo rojo oscuro (#8B0000) y texto blanco para filas ANIN
-    - Sin estilo para otras filas
+    Crea una tabla HTML personalizada con fondo oscuro y texto blanco.
+    Las filas de ANIN tienen fondo rojo oscuro (#8B0000).
     """
-    # Crear lista de estilos para cada fila
-    styles = []
-    for idx, row in df.iterrows():
-        if row['programa'] == 'ANIN':
-            style = {
-                'props': [
-                    ('background-color', '#8B0000'),
-                    ('color', 'white'),
-                    ('font-weight', 'bold'),
-                    ('border', '1px solid #5C0000')
-                ]
-            }
-        else:
-            style = {'props': []}
-        styles.append(style)
+    # Filtrar columnas
+    df = df[display_cols].copy()
     
-    # Aplicar estilos a cada fila usando set_table_styles
-    return df.style.set_table_styles(
-        [{'selector': f'tr:nth-child({idx+1}) td', 'props': style['props']} 
-         for idx, style in enumerate(styles)]
-    ).format({'n': '{:,.0f}'}, na_rep="")
+    # Formatear números
+    for col in ['n', 'media', 'mediana', 'min', 'max']:
+        if col in df.columns:
+            df[col] = df[col].apply(lambda x: f"S/ {x:,.1f}" if pd.notnull(x) else "")
+    
+    if 'coef_var' in df.columns:
+        df['coef_var'] = df['coef_var'].apply(lambda x: f"{x*100:.1f}%" if pd.notnull(x) else "")
+    
+    # Iniciar HTML
+    html = """
+    <div style="overflow-x:auto;">
+    <table style="width:100%; border-collapse: collapse; font-family: Arial, sans-serif; background-color: #111; color: white;">
+    <thead>
+        <tr style="background-color: #1e1e1e; color: white; text-align: left;">
+    """
+    
+    # Encabezados
+    for col in df.columns:
+        html += f'<th style="padding: 10px; border-bottom: 2px solid #333; text-align: left;">{col}</th>'
+    html += "</tr></thead><tbody>"
+    
+    # Filas
+    for _, row in df.iterrows():
+        bg_color = "#8B0000" if row['programa'] == 'ANIN' else "#1f1f1f"
+        html += f'<tr style="background-color: {bg_color}; color: white; border-bottom: 1px solid #333;">'
+        for col in df.columns:
+            value = row[col]
+            html += f'<td style="padding: 8px; text-align: right; white-space: nowrap;">{value}</td>'
+        html += "</tr>"
+    html += "</tbody></table></div>"
+    
+    return html
 
 # Configuración inicial de la página
 st.set_page_config(layout="wide")
@@ -226,13 +239,9 @@ with tab1:
         display_cols = ['programa', 'regimen', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']
         display_cols = [col for col in display_cols if col in df_regimen_combined.columns]
         
-        # Aplicar estilo mejorado con set_table_styles
-        styled_df = apply_anin_style(df_regimen_combined[display_cols])
-        st.dataframe(
-            styled_df,
-            height=(len(df_regimen_combined) * 35 + 38),
-            use_container_width=True
-        )
+        # Crear tabla HTML personalizada
+        html_table = create_custom_table(df_regimen_combined, display_cols)
+        st.markdown(html_table, unsafe_allow_html=True)
         
         # Gráfico comparativo
         if not df_regimen_combined.empty:
@@ -276,13 +285,9 @@ with tab2:
         display_cols = ['programa', 'categoria_laboral', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']
         display_cols = [col for col in display_cols if col in df_categoria_combined.columns]
         
-        # Aplicar estilo mejorado con set_table_styles
-        styled_df = apply_anin_style(df_categoria_combined[display_cols])
-        st.dataframe(
-            styled_df,
-            height=(len(df_categoria_combined) * 35 + 38),
-            use_container_width=True
-        )
+        # Crear tabla HTML personalizada
+        html_table = create_custom_table(df_categoria_combined, display_cols)
+        st.markdown(html_table, unsafe_allow_html=True)
         
         # Gráfico comparativo
         if not df_categoria_combined.empty:
@@ -376,6 +381,7 @@ with tab3:
 
 # Nota al pie
 st.caption("© 2025 - Análisis de Remuneraciones de Programas en Extinción desarrollado por Raúl Mauro | Datos abiertos del Estado peruano | Versión 2.4")
+
 
 
 
