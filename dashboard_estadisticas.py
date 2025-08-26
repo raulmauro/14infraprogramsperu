@@ -171,7 +171,12 @@ def crear_grafico_comparativo(df, x_col, y_col, title, programa_seleccionado):
 # Función para resaltar filas de ANIN (versión corregida)
 def highlight_anin(row):
     is_anin = row['programa'] == 'ANIN'
-    return ['background-color: #720000' if is_anin else '' for _ in row]
+    if is_anin:
+        return [
+            'background-color: #720000; color: white; font-weight: bold' for _ in row
+        ]  # Rojo oscuro con texto blanco
+    else:
+        return ['' for _ in row]
 
 # Crear pestañas
 tab1, tab2, tab3 = st.tabs(["📋 Comparativa por Régimen", "🧾 Comparativa por Categoría", "⚖️ Análisis de Desigualdad"])
@@ -356,5 +361,6 @@ with tab3:
 
 # Nota al pie
 st.caption("© 2025 - Análisis de Remuneraciones de Programas en Extinción desarrollado por Raúl Mauro | Datos abiertos del Estado peruano | Versión 2.4")
+
 
 
