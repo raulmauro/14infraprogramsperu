@@ -168,15 +168,15 @@ def crear_grafico_comparativo(df, x_col, y_col, title, programa_seleccionado):
     
     return fig
 
-# Función para resaltar filas de ANIN (versión corregida)
-def highlight_anin(row):
-    is_anin = row['programa'] == 'ANIN'
-    if is_anin:
-        return [
-            'background-color: #8B0000; color: white; font-weight: bold' for _ in row
-        ]  # Rojo oscuro con texto blanco
-    else:
-        return ['' for _ in row]
+# Función mejorada para resaltar filas de ANIN con fondo oscuro y texto blanco
+def highlight_anin_styler(df):
+    def _highlight_anin(row):
+        if row['programa'] == 'ANIN':
+            return ['background-color: #8B0000; color: white; font-weight: bold' for _ in row]
+        else:
+            return ['' for _ in row]
+    
+    return df.style.apply(_highlight_anin, axis=1)
 
 # Crear pestañas
 tab1, tab2, tab3 = st.tabs(["📋 Comparativa por Régimen", "🧾 Comparativa por Categoría", "⚖️ Análisis de Desigualdad"])
@@ -207,8 +207,8 @@ with tab1:
         display_cols = ['programa', 'regimen', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']
         display_cols = [col for col in display_cols if col in df_regimen_combined.columns]
         
-        # Aplicar estilo con índice único
-        styled_df = df_regimen_combined[display_cols].style.apply(highlight_anin, axis=1)
+        # Aplicar estilo mejorado
+        styled_df = highlight_anin_styler(df_regimen_combined[display_cols])
         styled_df = styled_df.format({'n': '{:,.0f}'}, na_rep="")
         
         st.dataframe(
@@ -259,8 +259,8 @@ with tab2:
         display_cols = ['programa', 'categoria_laboral', 'n', 'media', 'mediana', 'min', 'max', 'coef_var']
         display_cols = [col for col in display_cols if col in df_categoria_combined.columns]
         
-        # Aplicar estilo con índice único
-        styled_df = df_categoria_combined[display_cols].style.apply(highlight_anin, axis=1)
+        # Aplicar estilo mejorado
+        styled_df = highlight_anin_styler(df_categoria_combined[display_cols])
         styled_df = styled_df.format({'n': '{:,.0f}'}, na_rep="")
         
         st.dataframe(
@@ -361,6 +361,7 @@ with tab3:
 
 # Nota al pie
 st.caption("© 2025 - Análisis de Remuneraciones de Programas en Extinción desarrollado por Raúl Mauro | Datos abiertos del Estado peruano | Versión 2.4")
+
 
 
 
