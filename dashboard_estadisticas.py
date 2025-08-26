@@ -173,7 +173,7 @@ def highlight_anin(row):
     is_anin = row['programa'] == 'ANIN'
     if is_anin:
         return [
-            'background-color: #720000; color: white; font-weight: bold' for _ in row
+            'background-color: #8B0000; color: white; font-weight: bold' for _ in row
         ]  # Rojo oscuro con texto blanco
     else:
         return ['' for _ in row]
@@ -361,6 +361,7 @@ with tab3:
 
 # Nota al pie
 st.caption("© 2025 - Análisis de Remuneraciones de Programas en Extinción desarrollado por Raúl Mauro | Datos abiertos del Estado peruano | Versión 2.4")
+
 
 
 
